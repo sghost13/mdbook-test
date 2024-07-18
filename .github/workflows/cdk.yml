@@ -16,6 +16,9 @@ on:
       - closed
     branches:
       - main
+    paths:
+      - "infra/bin/**"
+      - "infra/lib/**"
 
 permissions:
   id-token: write
@@ -27,7 +30,7 @@ jobs:
 
     environment: ${{ github.event.inputs.environment }}
 
-    if: github.event_name == 'workflow_dispatch' && contains('["sghost13"]', github.actor)
+    if: github.event_name == 'workflow_dispatch' && contains('["sghost13"]', github.actor) &&
 
     steps:
       - name: Checkout Repository
