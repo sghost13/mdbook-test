@@ -1,0 +1,61 @@
+name: Deploy GH Pages DNS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "AWS environment to deploy to"
+        type: choice
+        required: true
+        default: "dev"
+        options:
+          - dev
+
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment: ${{ github.event.inputs.environment }}
+
+    if: github.event_name == 'workflow_dispatch' && contains('["sghost13"]', github.actor)
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Cache Node.js dependencies
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('./infra/package-lock.json') }}
+
+      - name: Install CDK Dependencies
+        working-directory: ./infra
+        run: npm ci
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubActions"
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy CDK
+        run: |
+          npx cdk deploy --all --require-approval never
